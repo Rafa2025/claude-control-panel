@@ -6,11 +6,12 @@ import {
   writeSkillContent,
   findConflicts,
   createSkill,
+  deleteSkill,
 } from './skills.js';
 import { generateSkill } from './skillgen.js';
 import { getAgentTree, getAgentLogs, getAgentHistory, getSkillUsage } from './agents.js';
 import { getMarketplace, installSkill } from './marketplace.js';
-import { startScan, getSuggestions } from './suggester.js';
+import { startScan, getSuggestions, dismissSuggestion } from './suggester.js';
 import { analyze, finalize, exportPrompt } from './advisor.js';
 import { appendEntry, listEntries, deleteEntry } from './history.js';
 import { getUsage } from './usage.js';
@@ -48,6 +49,10 @@ app.post('/api/skills/create', wrap(async (req, res) => {
 
 app.put('/api/skills/:id/state', wrap(async (req, res) => {
   res.json(await setSkillState(req.params.id, req.body?.enabled));
+}));
+
+app.delete('/api/skills/:id', wrap(async (req, res) => {
+  res.json(await deleteSkill(req.params.id));
 }));
 
 app.get('/api/skills/:id/content', wrap(async (req, res) => {
@@ -118,6 +123,10 @@ app.get('/api/suggestions', wrap(async (_req, res) => {
 
 app.post('/api/suggestions/scan', wrap(async (req, res) => {
   res.json(await startScan(req.body?.topic, req.body?.model));
+}));
+
+app.post('/api/suggestions/dismiss', wrap(async (req, res) => {
+  res.json(await dismissSuggestion(req.body?.url));
 }));
 
 app.get('/api/agents', wrap(async (_req, res) => {

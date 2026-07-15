@@ -4,12 +4,15 @@ import os from 'node:os';
 
 const HOME = os.homedir();
 export const SKILLS_DIR = path.join(HOME, '.claude', 'skills');
+// Disabling a skill moves its directory here, out of the path Claude Code scans,
+// so the toggle actually takes effect in real sessions (not just cosmetically).
+export const DISABLED_DIR = path.join(HOME, '.claude', 'skills-disabled');
 export const HOME_CLAUDE_MD = path.join(HOME, 'CLAUDE.md');
 const DATA_DIR = path.join(HOME, 'claude-control-panel', 'data');
 const STATE_FILE = path.join(DATA_DIR, 'skills-state.json');
 
 // Every filesystem path this module touches must live under one of these.
-const ALLOWED_ROOTS = [SKILLS_DIR, HOME_CLAUDE_MD, path.join(HOME, 'claude-control-panel')];
+const ALLOWED_ROOTS = [SKILLS_DIR, DISABLED_DIR, HOME_CLAUDE_MD, path.join(HOME, 'claude-control-panel')];
 
 function assertInScope(p) {
   const resolved = path.resolve(p);
@@ -71,14 +74,14 @@ async function findSkillFile(dir) {
   return anyMd ? path.join(dir, anyMd) : null;
 }
 
-async function scanSkillsDir() {
+async function scanSkillsDir(baseDir, { disabled = false } = {}) {
   let dirs = [];
   try {
     // Many skill dirs are symlinks (e.g. into ~/.agents/skills), so follow them via stat.
-    const entries = await fs.readdir(SKILLS_DIR);
+    const entries = await fs.readdir(baseDir);
     for (const name of entries) {
       try {
-        if ((await fs.stat(path.join(SKILLS_DIR, name))).isDirectory()) dirs.push(name);
+        if ((await fs.stat(path.join(baseDir, name))).isDirectory()) dirs.push(name);
       } catch {
         // broken symlink — skip
       }
@@ -88,7 +91,7 @@ async function scanSkillsDir() {
   }
   const skills = [];
   for (const dir of dirs.sort()) {
-    const file = await findSkillFile(path.join(SKILLS_DIR, dir));
+    const file = await findSkillFile(path.join(baseDir, dir));
     if (!file) continue;
     let fm = {}, desc = '';
     try {
@@ -105,6 +108,7 @@ async function scanSkillsDir() {
       source: 'personal',
       file,
       editable: true,
+      disabled,
     });
   }
   return skills;
@@ -139,30 +143,69 @@ async function scanClaudeMd(file, sourceLabel, knownIds) {
 }
 
 export async function listSkills() {
-  const dirSkills = await scanSkillsDir();
+  const enabledSkills = await scanSkillsDir(SKILLS_DIR, { disabled: false });
+  const disabledSkills = await scanSkillsDir(DISABLED_DIR, { disabled: true });
+  const dirSkills = [...enabledSkills, ...disabledSkills].sort((a, b) => a.id.localeCompare(b.id));
   const knownIds = new Set(dirSkills.map((s) => s.id));
   const mdSkills = await scanClaudeMd(HOME_CLAUDE_MD, 'project', knownIds);
-  const state = await readStateFile();
   return [...dirSkills, ...mdSkills].map((s) => ({
     ...s,
-    enabled: state[s.id] !== false, // default enabled
+    // Location is truth: a skill under skills-disabled/ is disabled. For
+    // claude.md refs (no dir), fall back to the cosmetic state file.
+    enabled: s.disabled === undefined ? true : !s.disabled,
   }));
 }
 
+const VALID_ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
+
 export async function setSkillState(id, enabled) {
+  if (!VALID_ID.test(id)) {
+    throw Object.assign(new Error('Invalid skill id'), { status: 400 });
+  }
+  const from = assertInScope(path.join(enabled ? DISABLED_DIR : SKILLS_DIR, id));
+  const to = assertInScope(path.join(enabled ? SKILLS_DIR : DISABLED_DIR, id));
+
+  const alreadyThere = await fs.stat(to).then(() => true).catch(() => false);
+  const sourceExists = await fs.lstat(from).then(() => true).catch(() => false);
+
+  if (!sourceExists) {
+    // Nothing to move — either already in the target state, or not a real dir skill.
+    if (alreadyThere) return { id, enabled, moved: false };
+    throw Object.assign(new Error('Skill directory not found'), { status: 404 });
+  }
+  if (alreadyThere) {
+    throw Object.assign(new Error(`A skill named "${id}" already exists in the target location`), { status: 409 });
+  }
+
+  await fs.mkdir(path.dirname(to), { recursive: true });
+  // rename moves a symlink as a symlink (not its target) — correct for the many
+  // symlinked skills that point into ~/.agents/skills.
+  await fs.rename(from, to);
+
+  // Keep the legacy state file roughly in sync for anything still reading it.
   const state = await readStateFile();
-  state[id] = Boolean(enabled);
+  state[id] = enabled;
   await writeStateFile(state);
-  return { id, enabled: Boolean(enabled) };
+  return { id, enabled, moved: true };
+}
+
+// Find a skill's dir across both enabled and disabled locations.
+function skillDirCandidates(id) {
+  return [path.join(SKILLS_DIR, id), path.join(DISABLED_DIR, id)];
 }
 
 async function resolveSkillFile(id) {
   if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(id)) {
     throw Object.assign(new Error('Invalid skill id'), { status: 400 });
   }
-  const file = await findSkillFile(assertInScope(path.join(SKILLS_DIR, id)));
-  if (!file) throw Object.assign(new Error('Skill file not found'), { status: 404 });
-  return assertInScope(file);
+  for (const dir of skillDirCandidates(id)) {
+    const inScope = assertInScope(dir);
+    const exists = await fs.stat(inScope).then(() => true).catch(() => false);
+    if (!exists) continue;
+    const file = await findSkillFile(inScope);
+    if (file) return assertInScope(file);
+  }
+  throw Object.assign(new Error('Skill file not found'), { status: 404 });
 }
 
 export async function readSkillContent(id) {
@@ -236,16 +279,44 @@ export async function createSkill(id, content) {
   if (typeof content !== 'string' || !content.trim()) {
     throw Object.assign(new Error('content must be a non-empty string'), { status: 400 });
   }
-  const dir = assertInScope(path.join(SKILLS_DIR, id));
-  try {
-    await fs.stat(dir);
-    throw Object.assign(new Error(`A skill named "${id}" already exists`), { status: 409 });
-  } catch (err) {
-    if (err.status) throw err; // the 409 above
-    // ENOENT — good, dir is free
+  // Guard against collision with an enabled OR a disabled skill of the same name.
+  for (const candidate of skillDirCandidates(id)) {
+    const exists = await fs.stat(assertInScope(candidate)).then(() => true).catch(() => false);
+    if (exists) {
+      const where = candidate.startsWith(DISABLED_DIR) ? ' (currently disabled)' : '';
+      throw Object.assign(new Error(`A skill named "${id}" already exists${where}`), { status: 409 });
+    }
   }
+  const dir = assertInScope(path.join(SKILLS_DIR, id));
   await fs.mkdir(dir, { recursive: true });
   const file = path.join(dir, 'SKILL.md');
   await fs.writeFile(file, content);
   return { id, file, bytes: Buffer.byteLength(content) };
+}
+
+// Permanently removes a skill directory (enabled or disabled). Scope-locked and
+// only reached through the UI's type-to-confirm step. rm of a symlinked skill
+// removes the link, never the ~/.agents/skills target it points to.
+export async function deleteSkill(id) {
+  if (!VALID_ID.test(id)) {
+    throw Object.assign(new Error('Invalid skill id'), { status: 400 });
+  }
+  for (const candidate of skillDirCandidates(id)) {
+    const dir = assertInScope(candidate);
+    const stat = await fs.lstat(dir).catch(() => null);
+    if (!stat) continue;
+    if (stat.isSymbolicLink()) {
+      await fs.unlink(dir); // drop just the link
+    } else {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+    // scrub any leftover state-file entry
+    const state = await readStateFile();
+    if (id in state) {
+      delete state[id];
+      await writeStateFile(state);
+    }
+    return { id, deleted: true, wasSymlink: stat.isSymbolicLink() };
+  }
+  throw Object.assign(new Error('Skill not found'), { status: 404 });
 }

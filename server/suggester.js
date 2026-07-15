@@ -139,3 +139,12 @@ export async function getSuggestions() {
     suggestions: saved.suggestions,
   };
 }
+
+// Drop a single suggestion by its url so stale cards don't linger until the next scan.
+export async function dismissSuggestion(url) {
+  const saved = await readSaved();
+  const before = (saved.suggestions || []).length;
+  saved.suggestions = (saved.suggestions || []).filter((s) => s.url !== url);
+  if (saved.suggestions.length !== before) await writeSaved(saved);
+  return { dismissed: url, remaining: saved.suggestions.length };
+}

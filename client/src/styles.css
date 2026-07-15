@@ -355,7 +355,24 @@ body {
   flex-direction: column;
   gap: 6px;
 }
-.scout-card .skill-name { font-size: 14px; }
+.scout-card { position: relative; }
+.scout-dismiss {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  line-height: 1;
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.scout-dismiss:hover { color: var(--red); background: #FBEDEE; }
+.scout-card .skill-name { font-size: 14px; padding-right: 22px; }
 .scout-card .skill-desc { margin: 0; }
 .scout-reason { font-size: 12px; color: var(--accent-hover); margin: 0; }
 .scout-card .btn-mini { align-self: flex-start; }
@@ -657,3 +674,7 @@ body {
 .name-hint { font-size: 11.5px; }
 .new-skill-preview { max-height: 45vh; }
 .editor-actions-right { display: flex; gap: 10px; margin-left: auto; }
+.delete-btn { margin-left: 0; }
+.delete-modal { width: min(520px, 100%); }
+.delete-hint { font-size: 13px; margin: 14px 0 6px; }
+.delete-name { color: var(--red); font-weight: 600; }

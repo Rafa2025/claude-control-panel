@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { listSkills, SKILLS_DIR } from './skills.js';
+import { listSkills } from './skills.js';
 import { recordUsage } from './usage.js';
 
 const CALL_TIMEOUT = 3 * 60 * 1000;
@@ -59,14 +59,20 @@ export function extractJsonObject(text) {
   return null;
 }
 
+// A curated methodology summary instead of dumping the full prompt-master skill
+// (~12k chars ≈ 3k tokens of pure overhead per call). This captures what the
+// advisor actually needs to write a good Claude Code prompt.
+const METHODOLOGY = `Write prompts for Claude Code (an agentic CLI that reads/edits files and runs commands). A strong prompt has:
+- A precise task stated as a concrete operation (not a vague verb).
+- Scope anchors: name the specific files/directories to touch, and what to leave alone.
+- Constraints: explicit MUST / MUST NOT rules.
+- Output/acceptance criteria: how to know it's done.
+- Stop conditions for destructive or irreversible actions ("ask before deleting, installing deps, or changing schema").
+- For multi-step work, front-load everything in one prompt: intent, files, constraints, criteria.
+Claude Code (Opus/Sonnet) is literal and can over-engineer — add "Only make the changes requested; no extra features or refactors." Do not add "think step by step" — modern models calibrate thinking automatically. Use XML-ish sections (<context>, <task>, <constraints>) for complex prompts.`;
+
 async function promptMasterExcerpt() {
-  try {
-    const raw = await fs.readFile(path.join(SKILLS_DIR, 'prompt-master', 'SKILL.md'), 'utf8');
-    // The full skill is long; the methodology core is enough for the advisor.
-    return raw.slice(0, 12000);
-  } catch {
-    return '(prompt-master skill not found locally — use general prompt-engineering best practices: explicit task, output format, constraints, scope locks, stop conditions.)';
-  }
+  return METHODOLOGY;
 }
 
 async function skillsCatalog() {

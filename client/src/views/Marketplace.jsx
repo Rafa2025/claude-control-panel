@@ -91,6 +91,16 @@ function AiScout() {
 
   const running = data?.status === 'running';
 
+  const dismiss = async (url) => {
+    // optimistic removal; reconcile from server on failure
+    setData((d) => ({ ...d, suggestions: d.suggestions.filter((s) => s.url !== url) }));
+    try {
+      await api.dismissSuggestion(url);
+    } catch {
+      load();
+    }
+  };
+
   return (
     <div className="scout glass">
       <div className="scout-head">
@@ -130,14 +140,19 @@ function AiScout() {
       {data?.error && !running && <p className="error-text">⚠ Last scan failed: {data.error}</p>}
       {data?.suggestions?.length > 0 && (
         <div className="scout-grid">
+          <AnimatePresence>
           {data.suggestions.map((s, i) => (
             <motion.div
-              key={s.url + i}
+              key={s.url}
               className="scout-card"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
               transition={{ delay: i * 0.05 }}
             >
+              <button className="scout-dismiss" title="Dismiss this suggestion" onClick={() => dismiss(s.url)}>
+                ✕
+              </button>
               <span className="skill-name">{s.name}</span>
               <p className="skill-desc">{s.description}</p>
               {s.reason && <p className="scout-reason">◈ {s.reason}</p>}
@@ -146,6 +161,7 @@ function AiScout() {
               </a>
             </motion.div>
           ))}
+          </AnimatePresence>
         </div>
       )}
       {data && !running && !data.suggestions?.length && !data.error && (

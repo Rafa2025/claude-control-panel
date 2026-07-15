@@ -294,6 +294,63 @@ function Editor({ skill, onClose, onSaved }) {
   );
 }
 
+function DeleteConfirm({ skill, onClose, onDeleted }) {
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const match = typed === skill.id;
+
+  const del = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.deleteSkill(skill.id);
+      onDeleted();
+    } catch (e) {
+      setError(e.message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <motion.div className="editor-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div
+        className="editor glass delete-modal"
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+      >
+        <div className="editor-head">
+          <h2>Delete skill</h2>
+        </div>
+        <p className="confirm-warning">
+          ⚠ This permanently deletes <span className="mono">~/.claude/skills/{skill.id}/</span> from
+          disk. This cannot be undone from the dashboard.
+        </p>
+        <p className="muted delete-hint">
+          Type the skill name <span className="mono delete-name">{skill.id}</span> to confirm:
+        </p>
+        <input
+          className="search-input advisor-answer"
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          placeholder={skill.id}
+          disabled={busy}
+          spellCheck={false}
+          autoFocus
+        />
+        {error && <p className="error-text">⚠ {error}</p>}
+        <div className="editor-actions">
+          <button className="btn" onClick={onClose} disabled={busy}>Cancel</button>
+          <button className="btn btn-danger" onClick={del} disabled={busy || !match}>
+            {busy ? 'Deleting…' : 'Delete permanently'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function SkillsManager() {
   const [skills, setSkills] = useState(null);
   const [error, setError] = useState(null);
@@ -304,6 +361,7 @@ export default function SkillsManager() {
   const [conflicts, setConflicts] = useState([]);
   const [conflictsOpen, setConflictsOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(null);
 
   const load = () => {
     api.listSkills()
@@ -315,10 +373,12 @@ export default function SkillsManager() {
   useEffect(load, []);
 
   const toggle = async (skill) => {
-    // optimistic UI, revert on failure
+    // optimistic UI, revert on failure. The server physically moves the skill
+    // dir in/out of skills-disabled/, so reload afterward to reflect truth.
     setSkills((s) => s.map((x) => (x.id === skill.id ? { ...x, enabled: !x.enabled } : x)));
     try {
       await api.setSkillState(skill.id, !skill.enabled);
+      load();
     } catch (e) {
       setSkills((s) => s.map((x) => (x.id === skill.id ? { ...x, enabled: skill.enabled } : x)));
       setError(e.message);
@@ -397,7 +457,11 @@ export default function SkillsManager() {
               <span className="skill-name">{s.name}</span>
               <button
                 className={`toggle ${s.enabled ? 'toggle-on' : ''}`}
-                title={s.enabled ? 'Deactivate' : 'Activate'}
+                title={
+                  s.enabled
+                    ? 'Disable — moves out of ~/.claude/skills so Claude stops loading it'
+                    : 'Enable — moves back into ~/.claude/skills'
+                }
                 onClick={() => toggle(s)}
               >
                 <span className="toggle-knob" />
@@ -417,6 +481,15 @@ export default function SkillsManager() {
               {s.editable && (
                 <button className="btn btn-mini" onClick={() => setEditing(s)}>
                   Edit
+                </button>
+              )}
+              {s.editable && (
+                <button
+                  className="btn btn-mini btn-danger delete-btn"
+                  title="Delete this skill"
+                  onClick={() => setDeleting(s)}
+                >
+                  Delete
                 </button>
               )}
             </div>
@@ -442,6 +515,18 @@ export default function SkillsManager() {
             onCreated={(r) => {
               setCreating(false);
               setFlash(`✓ ${r.id} created`);
+              setTimeout(() => setFlash(null), 4000);
+              load();
+            }}
+          />
+        )}
+        {deleting && (
+          <DeleteConfirm
+            skill={deleting}
+            onClose={() => setDeleting(null)}
+            onDeleted={() => {
+              setFlash(`✓ ${deleting.id} deleted`);
+              setDeleting(null);
               setTimeout(() => setFlash(null), 4000);
               load();
             }}

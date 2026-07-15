@@ -24,6 +24,12 @@ export const api = {
   installSkill: (id) =>
     request(`/api/marketplace/${encodeURIComponent(id)}/install`, { method: 'POST' }),
   suggestions: () => request('/api/suggestions'),
+  dismissSuggestion: (url) =>
+    request('/api/suggestions/dismiss', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url }),
+    }),
   startScan: (topic, model) =>
     request('/api/suggestions/scan', {
       method: 'POST',
@@ -46,6 +52,8 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ id, content }),
     }),
+  deleteSkill: (id) =>
+    request(`/api/skills/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   skillConflicts: () => request('/api/skills/conflicts'),
   installUpdate: (id) =>
     request(`/api/marketplace/${encodeURIComponent(id)}/install`, {
