@@ -7,6 +7,13 @@ import { listSkills } from './skills.js';
 
 const pexecFile = promisify(execFile);
 
+// Run ruflo from a neutral, dedicated dir — NOT the panel workspace. In the
+// panel's own dir, `ruflo agent list` auto-resumes the background daemon (which
+// spawns headless Claude sessions and burns tokens continuously). A cwd with no
+// .claude-flow workspace keeps our read-only observation from starting anything.
+const RUFLO_CWD = path.join(os.tmpdir(), 'ccp-ruflo-cwd');
+let rufloCwdReady = fs.mkdir(RUFLO_CWD, { recursive: true }).catch(() => {});
+
 const HISTORY_FILE = path.join(os.homedir(), 'claude-control-panel', 'data', 'agent-history.jsonl');
 const HISTORY_MAX_AGE = 2 * 60 * 60 * 1000; // keep last 2 hours of snapshots
 const SNAPSHOT_MIN_INTERVAL = 5000; // one write per poll cycle even with multiple clients
@@ -23,10 +30,13 @@ const RUFLO_COMMANDS = {
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]*$/;
 
 async function runRuflo(args, timeout = 15000) {
+  await rufloCwdReady;
   // --no-install: never trigger a network install from the dashboard.
+  // cwd: RUFLO_CWD so ruflo can't auto-start the daemon in the panel workspace.
   const { stdout, stderr } = await pexecFile('npx', ['--no-install', 'ruflo', ...args], {
     timeout,
     maxBuffer: 4 * 1024 * 1024,
+    cwd: RUFLO_CWD,
   });
   return stdout + (stderr ? '\n' + stderr : '');
 }

@@ -11,11 +11,17 @@ const CREDENTIALS_FILE = path.join(os.homedir(), '.claude', '.credentials.json')
 
 let cache = { at: 0, result: null };
 
+// Neutral cwd so the health check's `ruflo agent list` can't auto-start the
+// token-burning daemon in the panel workspace (see agents.js RUFLO_CWD note).
+const RUFLO_CWD = path.join(os.tmpdir(), 'ccp-ruflo-cwd');
+
 async function checkRuflo() {
   try {
+    await fs.mkdir(RUFLO_CWD, { recursive: true }).catch(() => {});
     await pexecFile('npx', ['--no-install', 'ruflo', 'agent', 'list'], {
       timeout: 12000,
       maxBuffer: 1024 * 1024,
+      cwd: RUFLO_CWD,
     });
     return 'ok';
   } catch {
