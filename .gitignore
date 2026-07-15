@@ -1,0 +1,18 @@
+node_modules/
+client/node_modules/
+
+# ruflo/claude-flow runtime state (not part of this project)
+.claude-flow/
+.swarm/
+.hive-mind/
+memory/
+
+# local runtime state (regenerated at runtime)
+data/skills-state.json
+data/suggestions.json
+data/advisor-history.json
+data/agent-history.jsonl
+data/last-prompt.md
+
+# logs
+*.log

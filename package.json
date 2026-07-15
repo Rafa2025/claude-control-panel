@@ -1,0 +1,16 @@
+{
+  "name": "claude-control-panel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n server,client -c cyan,magenta \"node server/index.js\" \"npm run dev --prefix client\"",
+    "server": "node server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
