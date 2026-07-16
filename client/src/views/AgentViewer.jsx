@@ -11,6 +11,10 @@ function LogPanel({ agent, onClose }) {
   const [logs, setLogs] = useState(null);
   const [live, setLive] = useState(true);
   const bodyRef = useRef(null);
+  // Whether the view is pinned to the bottom. Only auto-scroll on new content
+  // when the user is already at the bottom — otherwise scrolling up to read
+  // earlier activity would get yanked back down on the next poll.
+  const stickRef = useRef(true);
 
   useEffect(() => {
     let alive = true;
@@ -29,10 +33,18 @@ function LogPanel({ agent, onClose }) {
     return () => { alive = false; clearTimeout(timer); };
   }, [agent.id, live]);
 
-  // keep the newest activity in view as it streams in
+  // keep the newest activity in view only when the user is already at the bottom
   useEffect(() => {
-    if (live && bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    const el = bodyRef.current;
+    if (live && el && stickRef.current) el.scrollTop = el.scrollHeight;
   }, [logs, live]);
+
+  const onBodyScroll = () => {
+    const el = bodyRef.current;
+    if (!el) return;
+    // within 40px of the bottom counts as "stuck to bottom"
+    stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  };
 
   return (
     <motion.aside
@@ -65,7 +77,7 @@ function LogPanel({ agent, onClose }) {
           <span className="muted">Current task: </span>{agent.task}
         </p>
       )}
-      <pre className="log-body" ref={bodyRef}>{logs === null ? 'Fetching activity…' : logs}</pre>
+      <pre className="log-body" ref={bodyRef} onScroll={onBodyScroll}>{logs === null ? 'Fetching activity…' : logs}</pre>
     </motion.aside>
   );
 }
