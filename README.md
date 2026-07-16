@@ -62,6 +62,18 @@ Then open **http://localhost:5173**.
 If the agent view or AI features 401, run `claude login` in a terminal — headless calls use
 your existing CLI credentials.
 
+### Desktop launcher (Linux / GNOME)
+
+Install an app-menu launcher so you can open the dashboard with a click — it starts the dev
+server if it isn't already running, then opens your browser:
+
+```bash
+scripts/install-launcher.sh
+```
+
+Then search for **Claude Control Panel** in your app menu (or pin it to the dock). Remove it
+with `scripts/install-launcher.sh --uninstall`. The app icon lives at `client/public/icon.svg`.
+
 ## Safety & scope
 
 - All filesystem operations are locked to `~/.claude/skills/`, `~/.claude/skills-disabled/`, `~/CLAUDE.md`, and the project directory itself.
