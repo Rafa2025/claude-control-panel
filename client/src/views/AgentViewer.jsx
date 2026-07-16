@@ -5,17 +5,34 @@ import AgentTree from '../components/AgentTree.jsx';
 
 const POLL_MS = 7000;
 
+const LOG_POLL_MS = 3000;
+
 function LogPanel({ agent, onClose }) {
   const [logs, setLogs] = useState(null);
+  const [live, setLive] = useState(true);
+  const bodyRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
+    let timer;
     setLogs(null);
-    api.agentLogs(agent.id)
-      .then((r) => alive && setLogs(r.logs))
-      .catch((e) => alive && setLogs(`Failed to fetch logs: ${e.message}`));
-    return () => { alive = false; };
-  }, [agent.id]);
+    const poll = async () => {
+      try {
+        const r = await api.agentLogs(agent.id);
+        if (alive) setLogs(r.logs);
+      } catch (e) {
+        if (alive) setLogs(`Failed to fetch logs: ${e.message}`);
+      }
+      if (alive && live) timer = setTimeout(poll, LOG_POLL_MS);
+    };
+    poll();
+    return () => { alive = false; clearTimeout(timer); };
+  }, [agent.id, live]);
+
+  // keep the newest activity in view as it streams in
+  useEffect(() => {
+    if (live && bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+  }, [logs, live]);
 
   return (
     <motion.aside
@@ -27,7 +44,16 @@ function LogPanel({ agent, onClose }) {
     >
       <div className="log-head">
         <h3>{agent.name}</h3>
-        <button className="btn btn-mini" onClick={onClose}>✕</button>
+        <div className="log-head-right">
+          <button
+            className={`btn btn-mini ${live ? 'live-on' : ''}`}
+            title={live ? 'Live — updating every 3s. Click to pause.' : 'Paused. Click to resume live updates.'}
+            onClick={() => setLive((v) => !v)}
+          >
+            {live ? '● Live' : '❚❚ Paused'}
+          </button>
+          <button className="btn btn-mini" onClick={onClose}>✕</button>
+        </div>
       </div>
       <div className="log-meta">
         <span className={`badge badge-${agent.source}`}>{agent.source}</span>
@@ -39,7 +65,7 @@ function LogPanel({ agent, onClose }) {
           <span className="muted">Current task: </span>{agent.task}
         </p>
       )}
-      <pre className="log-body">{logs === null ? 'Fetching logs…' : logs}</pre>
+      <pre className="log-body" ref={bodyRef}>{logs === null ? 'Fetching activity…' : logs}</pre>
     </motion.aside>
   );
 }

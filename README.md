@@ -30,7 +30,7 @@ localhost for a single user.
 
 ### Agent workflow viewer
 - Renders live `ruflo` agents plus local Claude/ruflo OS processes as an animated parent→child tree, auto-refreshing on a poll.
-- Click a node for its logs (or live process detail for OS processes); status rings and edges animate for running agents.
+- Click a Claude Code session node to watch its **live activity** — thinking, tool calls, commands run, and results — parsed from that session's transcript and updated every few seconds (pausable). Other OS processes show live process detail.
 - A timeline scrub bar replays the tree from recent history snapshots.
 
 ### Everywhere
@@ -76,7 +76,7 @@ with `scripts/install-launcher.sh --uninstall`. The app icon lives at `client/pu
 
 ## Safety & scope
 
-- All filesystem operations are locked to `~/.claude/skills/`, `~/.claude/skills-disabled/`, `~/CLAUDE.md`, and the project directory itself.
+- Filesystem writes are locked to `~/.claude/skills/`, `~/.claude/skills-disabled/`, and the project directory. The agent viewer additionally *reads* (never writes) Claude Code session transcripts under `~/.claude/projects/` to show live activity — so it will display the content of your local Claude conversations. Since it's a single-user localhost tool, that stays on your machine.
 - No skill file is ever changed without an explicit in-UI confirmation (diff, install-confirm, or type-to-confirm).
 - `ruflo` is only ever invoked with read-only commands (list / status / logs / health) — nothing that spawns, kills, or mutates agents. Those calls run from a neutral working directory so they don't auto-start the token-consuming ruflo daemon.
 

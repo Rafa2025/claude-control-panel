@@ -602,7 +602,9 @@ body {
   padding: 16px;
   box-shadow: var(--shadow-lg);
 }
-.log-head { display: flex; justify-content: space-between; align-items: center; }
+.log-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.log-head-right { display: flex; gap: 6px; align-items: center; }
+.live-on { color: var(--green); border-color: rgba(24, 133, 84, 0.4); background: #EAF5EF; }
 .log-head h3 {
   font-family: var(--font-display);
   font-size: 15px;
