@@ -22,6 +22,48 @@
   --radius: 12px;
 }
 
+/* Dark theme — warm charcoal surfaces, same terracotta accent, brightened
+   status colors for contrast. Everything is variable-driven, so this mostly
+   redefines the palette; the rules below override the few hardcoded pale tints. */
+:root[data-theme='dark'] {
+  --bg: #1A1714;
+  --bg-2: #211E19;
+  --surface: #272320;
+  --accent: #E38A6A;
+  --accent-hover: #EEA083;
+  --accent-soft: rgba(227, 138, 106, 0.16);
+  --text: #ECE8E1;
+  --muted: #A39C8D;
+  --border: #38332C;
+  --border-strong: #4B453B;
+  --green: #4ADE9A;
+  --amber: #F0AC55;
+  --red: #F26B78;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 34px rgba(0, 0, 0, 0.5);
+}
+/* override hardcoded light tints so dark mode has no bright patches */
+:root[data-theme='dark'] .badge-project,
+:root[data-theme='dark'] .badge-ruflo { color: #C7B6F5; border-color: rgba(167, 139, 250, 0.35); background: rgba(139, 92, 246, 0.16); }
+:root[data-theme='dark'] .badge-active,
+:root[data-theme='dark'] .badge-usage,
+:root[data-theme='dark'] .diff-add,
+:root[data-theme='dark'] .health-chip.dot-ok { background: rgba(74, 222, 154, 0.14); }
+:root[data-theme='dark'] .badge-plugin,
+:root[data-theme='dark'] .btn-update,
+:root[data-theme='dark'] .health-chip.dot-warn { background: rgba(240, 172, 85, 0.15); }
+:root[data-theme='dark'] .diff-del,
+:root[data-theme='dark'] .health-chip.dot-error,
+:root[data-theme='dark'] .btn-danger:hover,
+:root[data-theme='dark'] .scout-dismiss:hover { background: rgba(242, 107, 120, 0.16); }
+:root[data-theme='dark'] .editor-overlay { background: rgba(0, 0, 0, 0.62); }
+:root[data-theme='dark'] .toggle-knob { background: #ECE8E1; }
+
+/* smooth the swap on the main surfaces */
+body, .glass, .btn, .node, .badge, .nav-btn, .search-box, .model-select {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -467,6 +509,23 @@ body {
 
 /* ---------- nav meta (tokens + health) ---------- */
 .nav-meta { display: flex; align-items: center; gap: 14px; }
+.theme-toggle {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.theme-toggle:hover { color: var(--accent-hover); border-color: var(--accent); }
 .token-counter { color: var(--muted); font-size: 12px; }
 .health-strip { display: flex; gap: 6px; align-items: center; }
 .health-chip {

@@ -36,7 +36,7 @@ localhost for a single user.
 ### Everywhere
 - Model picker (Haiku / Sonnet / Opus) for every AI-backed action.
 - Session token counter and a health strip (ruflo / credentials / client-port status) in the nav.
-- Claude Desktop-inspired theme: warm ivory, terracotta accent, serif headings.
+- Claude Desktop-inspired theme with a light/dark toggle (remembers your choice, follows the OS preference on first visit): warm ivory or charcoal, terracotta accent, serif headings.
 
 ## Tech stack
 

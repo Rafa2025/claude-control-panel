@@ -85,6 +85,32 @@ function HealthStrip() {
   );
 }
 
+function ThemeToggle() {
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('ccp-theme');
+    if (saved === 'light' || saved === 'dark') return saved;
+    // first visit: follow the OS preference
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('ccp-theme', theme);
+  }, [theme]);
+
+  const dark = theme === 'dark';
+  return (
+    <button
+      className="theme-toggle"
+      title={dark ? 'Switch to light theme' : 'Switch to dark theme'}
+      aria-label="Toggle theme"
+      onClick={() => setTheme(dark ? 'light' : 'dark')}
+    >
+      {dark ? '☀' : '☾'}
+    </button>
+  );
+}
+
 export default function App() {
   const [view, setView] = useState('skills');
   return (
@@ -96,6 +122,7 @@ export default function App() {
         <div className="nav-meta">
           <TokenCounter />
           <HealthStrip />
+          <ThemeToggle />
         </div>
         <nav className="nav">
           <button

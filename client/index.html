@@ -8,6 +8,16 @@
     <link rel="apple-touch-icon" href="/icon-512.png" />
     <meta name="theme-color" content="#D97757" />
     <title>Claude Control Panel</title>
+    <script>
+      // apply saved/system theme before first paint to avoid a flash
+      (function () {
+        var t = localStorage.getItem('ccp-theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
